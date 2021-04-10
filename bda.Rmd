@@ -1,0 +1,338 @@
+---
+title: "Big Data Analytics"
+subtitle: "Assignment 1"
+date: "26/10/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T,
+                      error = F,
+                      message = F,
+                      warning = F,
+                      comment = "")
+library(ggplot2)
+library(dplyr)
+library(reshape2)
+```
+
+Reading the data into R workspace
+
+```{r}
+diamond <- read.csv("DiamondData.csv")
+```
+
+# Task 1.
+
+First printing the summary of all the variables in the dataset
+
+```{r}
+summary(diamond)
+```
+
+The errors sin the dataset includes:
+
+1. The `carat` variable varies from a minimum value of 0.2 to maximum of 5.01
+1. The `Very Good` level under `cut` attribute is also mistyped as `Very Geod`
+1. NA's in all the attributes
+1. Recalculating the value of `depth`
+
+**Correcting the level of `cut` variable**
+
+```{r}
+diamond$cut[diamond$cut == "Very Geod"] <- "Very Good"
+diamond$cut <- as.factor(as.character(diamond$cut))
+summary(diamond$cut)
+```
+
+**Removing all the rows containing any NAs's in the dataset**
+
+```{r}
+diamond <- diamond[complete.cases(diamond), ]
+dim(diamond)
+```
+
+**Correcting the range for `carat` variable**
+
+```{r}
+diamond <- diamond[diamond$carat >= 0.2 & diamond$carat <= 5.01,]
+summary(diamond$carat)
+```
+
+```{r}
+dim(diamond)
+```
+
+**Recalculating the values for `depth` variable**
+
+```{r}
+diamond$depth <- 2*diamond$z/(diamond$x+diamond$y)
+diamond <- diamond[complete.cases(diamond), ]
+```
+
+# Task 2
+
+```{r}
+summary(diamond)
+```
+
+```{r}
+ggplot(diamond, aes(x=carat,y=depth)) +
+  geom_point(aes(col=cut)) +
+  labs(
+    x = "Carat",
+    y = "Depth",
+    title = "Depth Vs Carat colored by cut quality"
+  )
+
+ggplot(diamond, aes(x=carat,y=depth)) +
+  geom_point(aes(col=color)) +
+  labs(
+    x = "Carat",
+    y = "Depth",
+    title = "Depth Vs Carat colored by diamond color"
+  )
+
+ggplot(diamond, aes(x=carat,y=depth)) +
+  geom_point(aes(col=clarity)) +
+  labs(
+    x = "Carat",
+    y = "Depth",
+    title = "Depth Vs Carat colored by diamond clarity"
+  )
+ggplot(diamond, aes(x=carat,y=table)) +
+  geom_point(aes(col=cut)) +
+  labs(
+    x = "Carat",
+    y = "Width",
+    title = "Width Vs Carat colored by cut quality"
+  )
+
+ggplot(diamond, aes(x=carat,y=table)) +
+  geom_point(aes(col=color)) +
+  labs(
+    x = "Carot",
+    y = "Width",
+    title = "Width Vs Carat colored by diamond color"
+  )
+
+ggplot(diamond, aes(x=carat,y=table)) +
+  geom_point(aes(col=clarity)) +
+  labs(
+    x = "Carat",
+    y = "Depth",
+    title = "Depth Vs Carat colored by diamond clarity"
+  )
+```
+
+```{r}
+ggplot(diamond, aes(x=carat, fill=color)) +
+  geom_histogram() +
+  labs(
+    x = "Carat",
+    y = "Frequency",
+    title = "Carat Distribution colored by diamond clarity"
+  ) + 
+  scale_color_grey()
+
+ggplot(diamond, aes(x=depth, fill=color)) +
+  geom_histogram() +
+  labs(
+    x = "Depth",
+    y = "Frequency",
+    title = "Depth Distribution colored by diamond clarity"
+  ) + 
+  scale_color_grey()
+
+ggplot(diamond, aes(x=table, fill=color)) +
+  geom_histogram() +
+  labs(
+    x = "Widt",
+    y = "Frequency",
+    title = "Diamond Top Width Distribution colored by diamond clarity"
+  ) + 
+  scale_color_grey()
+```
+
+```{r}
+diamond %>%
+  group_by(color) %>%
+  summarise(
+    mean.depth = mean(depth)
+  ) %>%
+  ggplot(aes(x="", y=mean.depth, fill=color)) +
+  geom_bar(width = 1, stat = "identity", color = "white") +
+  coord_polar("y", start = 0)+
+  theme_void() +
+  labs(
+    title = "Diamond mean Depth for different colors"
+  )
+```
+
+```{r}
+diamond %>%
+  group_by(color) %>%
+  summarise(
+    mean.width = mean(table)
+  ) %>%
+  ggplot(aes(y=mean.width, x=color)) +
+  geom_bar(stat = "identity") +
+  labs(
+    title = "Diamond mean top width for different colors"
+  ) + 
+  coord_flip()
+```
+
+# Task 3
+
+## Part (a)
+
+The following results shows the summary statistics for the `price` variable
+
+```{r}
+summary(diamond$price)
+```
+
+Now plotting the histogram for `price` variable
+
+```{r}
+diamond %>%
+  ggplot(aes(price)) +
+  geom_histogram() +
+  labs(
+    title = "Price Distribution"
+  )
+```
+
+From the above histrogram, we can observe that `price` variable is positively skewed. 
+
+## Part (b)
+
+```{r}
+price.group <- cut(diamond$price, 3, include.lowest=TRUE, labels=c("Low", "Med", "High"))
+table(price.group)
+```
+
+The following table shows the mea value of different numerical attributes in the dataset in different price groups
+
+```{r}
+diamond$price.group <- price.group
+t(diamond %>%
+    group_by(price.group) %>%
+    summarise_all(mean))
+```
+
+## Part (c)
+
+```{r}
+diamond %>%
+  ggplot(aes(x=cut,y=price)) +
+  geom_boxplot() +
+  labs(
+    title = "Prices for different cut types"
+  )
+```
+
+## Part (d)
+
+```{r}
+nums <- unlist(lapply(diamond, is.numeric))  
+diamond.nums <- diamond[,nums]
+cormat <- round(cor(diamond.nums),2)
+melted_cormat <- melt(cormat)
+ggplot(data = melted_cormat, aes(x=Var1, y=Var2, fill=value)) + 
+  geom_tile() +
+  labs(
+    x = "",
+    y = "",
+    title = "Heat Map/Correlation Matrix"
+  )
+```
+
+From the above plot, we can see that `carat` `x` and `y` are 3 most correlated variables with price.
+
+# Task 4
+
+```{r}
+cut <- diamond$cut
+clarity <- diamond$clarity
+table(cut, clarity)
+```
+
+```{r}
+ggplot(diamond, aes(x=carat,y=price)) +
+  geom_point(aes(col=cut)) +
+  labs(
+    x = "Carat",
+    y = "Price",
+    title = "Price Vs Carat colored by cut quality"
+  )
+
+ggplot(diamond, aes(x=carat,y=price)) +
+  geom_point(aes(col=color)) +
+  labs(
+    x = "Carat",
+    y = "Price",
+    title = "Price Vs Carat colored by diamond color"
+  )
+```
+
+# Task 5
+  
+## Part (a)
+
+```{r}
+diamond$volume <- diamond$x*diamond$y*diamond$z
+ggplot(diamond, aes(x=volume,y=price)) +
+  geom_point() +
+  labs(
+    x = "Volume",
+    y = "Price",
+    title = "Price Vs Volume"
+  )
+```
+
+
+## Part (b)
+
+```{r}
+cor(diamond$carat, diamond$volume)
+```
+
+From the above correlatio cefficient, we can tell that `volume` and `carat` are highly correlated.
+
+```{r}
+ggplot(diamond, aes(x=volume,y=carat)) +
+  geom_point() +
+  labs(
+    x = "Volume",
+    y = "Carat",
+    title = "Carat Vs Volume"
+  ) + 
+  geom_smooth(method='lm')
+```
+
+## Part (c)
+
+```{r}
+cor(diamond$table, diamond$depth)
+```
+
+From the above correlatio cefficient, we can tell that `table` and `depth` are not strongly correlated and the correlation is negative.
+
+```{r}
+ggplot(diamond, aes(x=depth,y=table)) +
+  geom_point() +
+  labs(
+    x = "Depth",
+    y = "Table",
+    title = "Table Vs Depth"
+  ) + 
+  geom_smooth(method='lm')
+```
+
+## Part (d)
+
+```{r}
+cormat
+```
